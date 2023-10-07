@@ -1,7 +1,3 @@
----
-banner: https://miro.medium.com/v2/resize:fit:842/1*oq82hKNzEOX-pd0THOH4ag.png
-sticker: lucide//code-2
----
 # FastAPI
 **FastAPI** is a modern Python web framework, very efficient in building APIs.
 ## Setting up Development Environment.
