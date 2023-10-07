@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import Body, FastAPI
 
 app = FastAPI()
 
@@ -9,3 +9,10 @@ def root():
 @app.get("/post")
 def get_posts():
     return {"data": "this is your post data"}
+
+@app.post("/createpost")
+def createPosts(payload: dict=Body):
+    print(payload)
+    return {
+        'newpost': f"title: {payload['title']}, content:{payload['content']}",
+    }
