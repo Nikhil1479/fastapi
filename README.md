@@ -1,6 +1,5 @@
 ---
 <img title="a title" alt="Alt text" src="[/images/boo.svg](https://miro.medium.com/v2/resize:fit:842/1*oq82hKNzEOX-pd0THOH4ag.png)">
-
 ---
 # FastAPI
 **FastAPI** is a modern Python web framework, very efficient in building APIs.
