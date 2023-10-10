@@ -60,5 +60,3 @@ INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 ```
 >This will start a server at localhost: `http://127.0.0.1:8000`.
-
-
