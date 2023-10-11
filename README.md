@@ -1,4 +1,5 @@
-# FastAPI - Main Branch
+# FastAPI
+
 **FastAPI** is a modern Python web framework, very efficient in building APIs.
 ## Setting up Development Environment.
 ### Virtual Environment in Python
@@ -60,3 +61,49 @@ INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 ```
 >This will start a server at localhost: `http://127.0.0.1:8000`.
+
+---
+## Data Validation using Pydantic
+**Pydantic** is a Python library for data parsing and validation. It uses the type hinting mechanism of the newer versions of Python (version 3.6 onwards) and validates the types during the runtime. Pydantic defines **`BaseModel`** class. It acts as the base class for creating user defined models.
+
+Payload (Sent from frontend)
+```json
+{
+    "title": "My vacation to miami",
+    "content": "checkout some awesome photos",
+    "rating": 5
+}
+```
+We need to make sure that the data we receive from frontend should be in a proper format.
+So, we need to validate for this we will be using `pydantic`
+### Setting up pydantic
+#### Importing necessary libraries
+```python
+from typing import Optional
+from pydantic import BaseModel
+```
+#### Validating Data
+```python
+class Post(BaseModel): 
+    title: str
+    content: str
+    published: bool = True # If the argument is not passed it will default to True.
+    rating: Optional[int] = None # Optional field, sets to none if not
+    type: str = "Response"
+```
+`Pydantic` will automatically validate the data when passed.
+
+We will pass data as an object of `Post` class (in our case)
+```python
+@app.post("/createpost")
+def createPosts(payload: Post):
+    print(payload)
+    print(payload.title)
+    print(type(payload))
+    # dict =  payload.model_dump() #Converting basemodel class object to python dictionary.
+    # dict.update({'type': 'response'})
+    return {'data': payload}
+```
+> This will validate our data according to the specified datatype and structure. If the data passed is not in proper format, it will raise an exception as a response.
+
+---
