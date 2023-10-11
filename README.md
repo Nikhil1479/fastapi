@@ -1,6 +1,5 @@
 # FastAPI
 
-^e5a744
 
 **FastAPI** is a modern Python web framework, very efficient in building APIs.
 ## Setting up Development Environment.
