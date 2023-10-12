@@ -77,3 +77,17 @@ def delete_post(id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not found in database")
     my_posts.pop(id_index)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+# Route for updating posts
+@app.put("/posts/{id}",status_code=status.HTTP_201_CREATED)
+def update_post(id: int, payload: Post):
+    id_index = find_index_post(id)
+    
+    if id_index == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not found in database")
+
+    post_dict = payload.model_dump()
+    post_dict['id'] = id
+    my_posts[id_index] = post_dict
+
+    return {'data': my_posts[id_index]}
