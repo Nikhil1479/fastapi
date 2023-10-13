@@ -107,3 +107,4 @@ def createPosts(payload: Post):
 > This will validate our data according to the specified datatype and structure. If the data passed is not in proper format, it will raise an exception as a response.
 
 ---
+### HTTP Status Codes
