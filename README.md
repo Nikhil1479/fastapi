@@ -147,3 +147,90 @@ def delete_post(id: int):
     :type id: int
     :return: a Response object with a status code of 204 (NO_CONTENT).
 ---
+## Creating a CRUD Application
+CRUD stands for create, read, update and delete. Our application will be able to perform all these operations
+### Reading a Post
+##### Storing all our post in `my_post` list.
+```python
+my_posts = [
+    {'title':'title of post 1','content': 'content of post 1','published':True, 
+    'rating':3,'id':1},
+    {'title': 'title of post 2','content':'content of post 2','published':True,  
+    'rating':4, 'id':2},
+    {'title': 'title of post 2','content':'content of post 2','published':True,   
+    'rating':4, 'id': 3},
+    {'title': 'favourite food','content':'pizza ♥','published':True, 'rating':5,            'id':4},
+]
+```
+
+```python
+# Route for reading posts
+@app.get("/posts")
+def get_posts():
+    return {"data": my_posts}
+```
+>The function `get_posts()` returns a dictionary with a key "data" and value `my_posts`.
+   :return: a dictionary with a key "data" and the value is the variable "my_posts".
+>**127.0.0.1:8000/posts**
+### Creating a post
+```python
+@app.post("/posts", status_code=status.HTTP_201_CREATED) # Default Status Code
+def createPosts(payload: Post):
+    post_dict = payload.model_dump() #Converting basemodel class object to python dictionary.
+    post_dict['id'] = random.randint(0,1000000)
+    my_posts.append(post_dict)
+    return {'data': post_dict}
+```
+>The above function creates a new post by adding it to a list of posts and returns the created post as a dictionary.
+    :param payload: The `payload` parameter is of type `Post`, which is likely a data model or class representing a post. It is used to receive the data for creating a new post
+    :type payload: Post
+    :return: a dictionary with the key 'data' and the value being the post_dict, which is a dictionary
+    containing the post data.
+    **127.0.0.1:8000/posts**
+#### Sample `JSON` format for post
+```json
+{
+    "title": "My vacation to miami",
+    "content": "checkout some awesome photos",
+    "rating": 5
+}
+```
+### Updating a Post
+```python
+@app.put("/posts/{id}",status_code=status.HTTP_201_CREATED)
+def update_post(id: int, payload: Post):
+    id_index = find_index_post(id)
+    if id_index == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not found in database")
+    post_dict = payload.model_dump()
+    post_dict['id'] = id
+    my_posts[id_index] = post_dict
+    return {'data': my_posts[id_index]}
+```
+>The function updates a post with the given ID in the database and returns the updated post.
+    :param id: The `id` parameter is an integer that represents the unique identifier of the post that
+    needs to be updated. It is used to locate the post in the database
+    :type id: int
+    :param payload: The `payload` parameter is of type `Post`, which is likely a model or schema class
+    representing the data structure of a post. It is used to receive the updated post data from the
+    client
+    :type payload: Post
+    :return: a dictionary with the key 'data' and the value being the updated post from the 'my_posts'
+    list at the specified index.
+    >**127.0.0.1:8000/posts/2**
+### Deleting a Post
+```python
+@app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(id: int):
+    id_index = find_index_post(id)
+    if id_index == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not found in database")
+    my_posts.pop(id_index)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+```
+>This function deletes a post with a specific ID from a database.
+    :param id: The `id` parameter is an integer that represents the unique identifier of the post to be
+    deleted
+    :type id: int
+    :return: a Response object with a status code of 204 (NO_CONTENT).
+    **127.0.0.1:8000/posts/2**
