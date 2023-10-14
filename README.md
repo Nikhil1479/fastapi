@@ -108,3 +108,42 @@ def createPosts(payload: Post):
 
 ---
 ### HTTP Status Codes
+[HTTP Status Code]([HTTP response status codes - HTTP | MDN (mozilla.org)](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status))
+HTTP response status codes indicate whether a specific [HTTP](https://developer.mozilla.org/en-US/docs/Web/HTTP) request has been successfully completed. Responses are grouped in five classes:
+1. [Informational responses](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#information_responses) (`100` – `199`)
+2. [Successful responses](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#successful_responses) (`200` – `299`)
+3. [Redirection messages](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#redirection_messages) (`300` – `399`)
+4. [Client error responses](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#client_error_responses) (`400` – `499`)
+5. [Server error responses](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#server_error_responses) (`500` – `599`)
+Everytime we trigger our `fastapi` in response we get a `HTTP status code` which represents the status of response, whether a `HTTP` request have been successfully completed or not.
+By default fastspi sends the HTTP status response code automatically. But we have to send our custom response code for our CRUD application.
+#### Using `HTTPException`
+```python
+from fastapi import Response, status, HTTPException
+
+# Route for reading a single post
+@app.get("/posts/{id}")
+def get_post(id: int, response: Response):
+    post = find_post(id)
+    if post:
+        return post
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Post with ID {id} not found')
+```
+#### Setting default status code
+You can set a default `status` code for a specific route by passing the status code inside the `decorator` or `route` itself.
+```python
+@app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(id: int):
+    id_index = find_index_post(id)
+    if id_index == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not         found in database")
+    my_posts.pop(id_index)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+```
+>This function deletes a post with a specific ID from a database.
+    :param id: The id parameter is an integer that represents the unique identifier of the post to be
+    deleted
+    :type id: int
+    :return: a Response object with a status code of 204 (NO_CONTENT).
+---
