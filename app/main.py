@@ -2,6 +2,9 @@ from typing import Optional
 from fastapi import Body, FastAPI, Response, status, HTTPException
 from pydantic import BaseModel
 import random
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import time
 '''
  The below class represents a post with a title and content.
  It is extending pydantic.BaseModel for data validation.
@@ -15,24 +18,19 @@ class Post(BaseModel):
 
 app = FastAPI()
 
-# Array to store the post data coming from frontend.
-my_posts = [
-    {'title':'title of post 1','content': 'content of post 1','published':True, 'rating':3,'id':1},
-    {'title': 'title of post 2','content':'content of post 2','published':True, 'rating':4, 'id':2},
-    {'title': 'title of post 2','content':'content of post 2','published':True, 'rating':4, 'id': 3},
-    {'title': 'favourite food','content':'pizza ♥','published':True, 'rating':5, 'id':4},
-]
-
-# Helper functions
-def find_post(id):
-    for post in my_posts:
-        if post['id'] == id:
-            return post
-        
-def find_index_post(id):
-    for i, post in enumerate(my_posts):
-        if post['id'] == id:
-            return i
+# Database Connection
+# The code block you provided is attempting to establish a connection to a PostgreSQL database using
+# the `psycopg2` library.
+while True:
+    try:
+        conn = psycopg2.connect(host='localhost', database='fastapi', user='postgres', password='niks1479',cursor_factory=RealDictCursor)
+        cursor = conn.cursor()
+        print("DB Connection Successful")
+        break
+    except Exception as error:
+        time.sleep(2)
+        print("DB Connection failed")
+        print("Error: ",error)
 
 # Routes
 """
@@ -45,107 +43,110 @@ def root():
 
 # Route for reading posts
 """
-    The function `get_posts()` returns a dictionary with a key "data" and value `my_posts`.
-    :return: a dictionary with a key "data" and the value is the variable "my_posts".
+    This function retrieves all posts from a database table and returns them as a JSON response.
+    :return: a dictionary with a key "data" and the value being the result of the SQL query, which is a
+    list of posts.
 """
 @app.get("/posts")
 def get_posts():
-    return {"data": my_posts}
+    cursor.execute("SELECT * from posts")
+    posts = cursor.fetchall()
+    print(posts)
+    return {"data": posts}
 
 # Route for creating posts
 """
-    The above function creates a new post by adding it to a list of posts and returns the created post
-    as a dictionary.
+    The above function creates a new post in a database table called "posts" and returns the newly
+    created post.
     
-    :param payload: The `payload` parameter is of type `Post`, which is likely a data model or class
-    representing a post. It is used to receive the data for creating a new post
+    :param payload: The parameter `payload` is of type `Post`, which is likely a data model or class
+    representing the structure of a post. It contains the following attributes:
     :type payload: Post
-    :return: a dictionary with the key 'data' and the value being the post_dict, which is a dictionary
-    containing the post data.
+    :return: a dictionary with the key 'data' and the value being the newly created post.
 """
 @app.post("/posts", status_code=status.HTTP_201_CREATED) # Default Status Code
 def createPosts(payload: Post):
-    post_dict = payload.model_dump() #Converting basemodel class object to python dictionary.
-    post_dict['id'] = random.randint(0,1000000)
-    my_posts.append(post_dict)
-    return {'data': post_dict}
+    cursor.execute("""INSERT INTO posts (title, content, published, rating) VALUES (%s, %s, %s, %s) RETURNING * """, (payload.title, payload.content, payload.published, payload.rating))
+    new_post = cursor.fetchone()
+    conn.commit()
+    return {'data': new_post}
 
 # Route for reading the latest post
 """
-    The function `get_latest_post` returns the latest post from a list of posts.
-    :return: The code is returning a JSON object with the latest post from the `my_posts` list. The JSON
-    object has a key "data" which contains the value of the latest post.
+    The function `get_latest_post` retrieves the latest post from a database table called "posts" and
+    returns it as a JSON response.
+    :return: The code is returning a JSON object with the latest post from the "posts" table in the
+    database. The post is retrieved by executing a SQL query that selects all columns from the "posts"
+    table and orders them by the "id" column in descending order. The "fetchone()" method is then used
+    to retrieve the first row of the result set, which represents the latest post. The JSON
 """
 @app.get("/posts/latest")
 def get_latest_post():
-    latest_post = my_posts[len(my_posts)-1]
+    cursor.execute("""SELECT * FROM posts ORDER BY id DESC""")
+    latest_post = cursor.fetchone()
     return {'data': latest_post}
 
 # Route for reading a single post
 """
-    This function retrieves a post with a specific ID and returns it, or raises a 404 error if the post
-    is not found.
+    This function retrieves a post from a database based on its ID and returns the post data if found,
+    or raises a 404 error if not found.
     
-    :param id: The `id` parameter is an integer that represents the ID of the post we want to retrieve.
-    It is specified in the URL path as a path parameter
+    :param id: The `id` parameter is an integer that represents the unique identifier of a post. It is
+    used to retrieve a specific post from the database
     :type id: int
     :param response: The `response` parameter is an instance of the `Response` class from the `fastapi`
     module. It is used to modify the response that will be sent back to the client
     :type response: Response
-    :return: If the post is found, it will be returned. If the post is not found, an HTTPException with
-    a status code of 404 (Not Found) will be raised.
-    """
+    :return: The code is returning a JSON response containing the fetched post data if a post with the
+    specified ID is found in the database. If the post is not found, it raises an HTTPException with a
+    status code of 404 (Not Found) and a detail message indicating that the post with the specified ID
+    was not found.
+"""
 @app.get("/posts/{id}")
 def get_post(id: int, response: Response):
-    post = find_post(id)
-    if post:
-        return post
+    cursor.execute("""SELECT * from posts where id = %s""",(str(id)))
+    fetched_post = cursor.fetchone()
+    if fetched_post:
+        return {"data":fetched_post}
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Post with ID {id} not found')
-        # response.status_code = status.HTTP_404_NOT_FOUND
-        # return f'Post with ID {id} not found'
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with {id} not found")
 
 # Route for deleting a post
 """
-    This function deletes a post with a specific ID from a database.
+    This function deletes a post from the database based on the provided ID and returns a 404 error if
+    the ID is not found.
     
-    :param id: The `id` parameter is an integer that represents the unique identifier of the post to be
-    deleted
+    :param id: The `id` parameter is an integer that represents the unique identifier of the post that
+    needs to be deleted
     :type id: int
-    :return: a Response object with a status code of 204 (NO_CONTENT).
     """
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
-    id_index = find_index_post(id)
-
-    if id_index == None:
+    cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *""",(str(id)))
+    conn.commit()
+    deleted_post = cursor.fetchone()
+    if deleted_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not found in database")
-    my_posts.pop(id_index)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Route for updating posts
 """
-    The function updates a post with the given ID in the database and returns the updated post.
+    The function updates a post in the database with the given ID and returns the updated post.
     
     :param id: The `id` parameter is an integer that represents the unique identifier of the post that
-    needs to be updated. It is used to locate the post in the database
+    needs to be updated. It is used to identify the specific post in the database that needs to be
+    updated
     :type id: int
-    :param payload: The `payload` parameter is of type `Post`, which is likely a model or schema class
-    representing the data structure of a post. It is used to receive the updated post data from the
-    client
+    :param payload: The `payload` parameter is of type `Post`, which is likely a data model or class
+    representing a post. It contains the updated information for the post, including the `title`,
+    `content`, and `published` status
     :type payload: Post
-    :return: a dictionary with the key 'data' and the value being the updated post from the 'my_posts'
-    list at the specified index.
+    :return: a dictionary with the key 'data' and the value being the updated post.
 """
 @app.put("/posts/{id}",status_code=status.HTTP_201_CREATED)
 def update_post(id: int, payload: Post):
-    id_index = find_index_post(id)
-    
-    if id_index == None:
+    cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",(payload.title,payload.content,payload.published,str(id)))
+    updated_post = cursor.fetchone()
+    conn.commit()
+    if updated_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not found in database")
-
-    post_dict = payload.model_dump()
-    post_dict['id'] = id
-    my_posts[id_index] = post_dict
-
-    return {'data': my_posts[id_index]}
+    return {'data': updated_post}
