@@ -234,3 +234,124 @@ def delete_post(id: int):
     :type id: int
     :return: a Response object with a status code of 204 (NO_CONTENT).
     **127.0.0.1:8000/posts/2**
+
+---
+## Introducing Databases
+As of now we are storing all our post in a list of dictionaries i.e.
+```python
+my_posts = [
+    {'title':'title of post 1','content': 'content of post 1','published':True, 
+    'rating':3,'id':1},
+    {'title': 'title of post 2','content':'content of post 2','published':True,  
+    'rating':4, 'id':2},
+    {'title': 'title of post 2','content':'content of post 2','published':True,   
+    'rating':4, 'id': 3},
+    {'title': 'favourite food','content':'pizza ♥','published':True, 'rating':5,            'id':4},
+]
+```
+>But we cannot store the post like this we would be needing a robust tool to store all our post.
+  For that we will be using `postgreSQL`.
+### PostgreSQL 
+PostgreSQL is an free open-source database system that supports both relational (SQL) and non-relational (JSON) queries.
+PostgreSQL is a back-end database for dynamic websites and web applications.
+
+### Schema for our Application
+
+| **Name**       | **Datatype**            | **Not Null?** | **Primary Key?** | **Default**                           |
+|------------|---------------------|-----------|--------------|-----------------------------------|
+| id         | integer             | YES       | YES          | `nextval('posts_id_seq'::regclass)` |
+| title      | character varying   | YES       | NO           |                                   |
+| content    | character varying   | YES       | NO           |                                   |
+| published  | boolean             | YES       |              | true                              |
+| created_at | time with time zone | YES       |              | `NOW()`                             |
+| rating     | integer             | NO        |              |                                   |
+To interact with `postgreSQL` using python we will be needing a postgreSQL driver i.e. `psycopg2`.
+### Installing `psycopg2`
+```sh
+pip install psycopg2
+```
+### Creating connection with `postgreSQL`
+```python
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+while True:
+    try:
+        conn = psycopg2.connect(host='localhost', database='fastapi', user='postgres', password='niks1479',cursor_factory=RealDictCursor)
+        cursor = conn.cursor()
+        print("DB Connection Successful")
+        break
+    except Exception as error:
+        time.sleep(2)
+        print("DB Connection failed")
+        print("Error: ",error)
+```
+*`RealDictCursor` is a specialized `DictCursor` that enables to access columns only from keys (aka columns name), whereas `DictCursor` enables to access data both from keys or index number*
+#### To execute a `SQl` query
+```python
+cursor.execute("QUERY")
+example:
+cursor.execute("SELECT * FROM posts*")
+```
+>This will return all the entries in post table.
+## CRUD Application using postgreSQL
+#### Connect to your db instance using the above steps:
+   [[#Creating connection with `postgreSQL`]]
+#### Reading Post
+```python
+@app.get("/posts")
+def get_posts():
+    cursor.execute("SELECT * from posts")
+    posts = cursor.fetchall()
+    print(posts)
+    return {"data": posts}
+```
+#### Creating Posts
+```python
+@app.post("/posts", status_code=status.HTTP_201_CREATED) # Default Status Code
+def createPosts(payload: Post):
+    cursor.execute("""INSERT INTO posts (title, content, published, rating) VALUES (%s, %s, %s, %s) RETURNING * """, (payload.title, payload.content, payload.published, payload.rating))
+    new_post = cursor.fetchone()
+    conn.commit()
+    return {'data': new_post}
+```
+#### Reading Latest Post
+```python
+@app.get("/posts/latest")
+def get_latest_post():
+    cursor.execute("""SELECT * FROM posts ORDER BY id DESC""")
+    latest_post = cursor.fetchone()
+    return {'data': latest_post}
+```
+#### Reading a single Post
+```python
+@app.get("/posts/{id}")
+def get_post(id: int, response: Response):
+    cursor.execute("""SELECT * from posts where id = %s""",(str(id)))
+    fetched_post = cursor.fetchone()
+    if fetched_post:
+        return {"data":fetched_post}
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with {id} not found")
+```
+#### Deleting a Post
+```python
+@app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(id: int):
+    cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *""",(str(id)))
+    conn.commit()
+    deleted_post = cursor.fetchone()
+    if deleted_post == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not found in database")
+```
+#### Updating Post
+```python
+@app.put("/posts/{id}",status_code=status.HTTP_201_CREATED)
+def update_post(id: int, payload: Post):
+    cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",(payload.title,payload.content,payload.published,str(id)))
+    updated_post = cursor.fetchone()
+    conn.commit()
+    if updated_post == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not found in database")
+    return {'data': updated_post}
+```
