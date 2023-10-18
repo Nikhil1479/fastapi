@@ -265,6 +265,7 @@ PostgreSQL is a back-end database for dynamic websites and web applications.
 | published  | boolean             | YES       |              | true                              |
 | created_at | time with time zone | YES       |              | `NOW()`                             |
 | rating     | integer             | NO        |              |                                   |
+
 To interact with `postgreSQL` using python we will be needing a postgreSQL driver i.e. `psycopg2`.
 ### Installing `psycopg2`
 ```sh
