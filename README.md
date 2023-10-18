@@ -13,7 +13,7 @@ This will create a virtual environment for python where we will keep al our depe
 Once a `venv` is created we will see a folder (in our case `venv`) this folder has all the libraries we will install.
 ### Configuring the python interpreter in vscode. 
 To configure venv python interpreter.
-- Open Command Palette <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>B</kbd>
+- Open Command Palette <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd>
 - Search for `Python: Select Interpreter`
 - Select `Enter Interpreter Path`
 - Enter path to your venv `python.exe` file i.e `.\venv\Scripts\python.exe`
