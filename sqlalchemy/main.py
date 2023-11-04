@@ -1,6 +1,8 @@
 from sqlalchemy import create_engine, Column, ForeignKey, String, Integer, CHAR
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from . import models
+
 
 SQL_ALCHEMY_DATABASE_URL = "postgresql://postgres:niks1479@localhost/fastapi"
 
@@ -36,10 +38,10 @@ session = DBSession()
 p1 = Person(2, "Nikhil", "Gupta", 25, "M")
 session.add(p1)
 
-p2 = Person(3, "Zoya","Gupta", 23, "F")
+p2 = Person(3, "Manas","Gupta", 21, "M")
 session.add(p2)
 
-p3 = Person(4, "Shreya","Gupta",18,"F")
+p3 = Person(4, "Deepa","Gupta",18,"F")
 session.add(p3)
 
 session.commit()
