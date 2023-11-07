@@ -5,6 +5,11 @@ import random
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
+from . import models
+from database import engine, SessionLocal
+
+models.Base.metadata.create_all(bind=engine)
+
 '''
  The below class represents a post with a title and content.
  It is extending pydantic.BaseModel for data validation.
