@@ -1,12 +1,13 @@
 from typing import Optional
-from fastapi import Body, FastAPI, Response, status, HTTPException
+from fastapi import Body, Depends, FastAPI, Response, status, HTTPException
 from pydantic import BaseModel
 import random
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
 from . import models
-from database import engine, SessionLocal
+from .database import engine, get_db
+from sqlalchemy.orm import Session
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -14,12 +15,16 @@ models.Base.metadata.create_all(bind=engine)
  The below class represents a post with a title and content.
  It is extending pydantic.BaseModel for data validation.
 '''
-class Post(BaseModel): 
+
+
+class Post(BaseModel):
     title: str
     content: str
-    published: bool = True # If the argument is not passed it will default to True.
-    rating: Optional[int] = None # Optional field, sets to none if not
+    # If the argument is not passed it will default to True.
+    published: bool = True
+    rating: Optional[int] = None  # Optional field, sets to none if not
     type: str = "Response"
+
 
 app = FastAPI()
 
@@ -28,23 +33,34 @@ app = FastAPI()
 # the `psycopg2` library.
 while True:
     try:
-        conn = psycopg2.connect(host='localhost', database='fastapi', user='postgres', password='niks1479',cursor_factory=RealDictCursor)
+        conn = psycopg2.connect(host='localhost', database='fastapi',
+                                user='postgres', password='niks1479', cursor_factory=RealDictCursor)
         cursor = conn.cursor()
         print("DB Connection Successful")
         break
     except Exception as error:
         time.sleep(2)
         print("DB Connection failed")
-        print("Error: ",error)
+        print("Error: ", error)
 
 # Routes
+
+
+@app.get('/sqlalchemy')
+def test_posts(db: Session = Depends(get_db)):
+    return {"status": "success"}
+
+
 """
     The function returns a JSON response with a message indicating that it is a social media API.
     :return: The message "social media api" is being returned.
 """
+
+
 @app.get("/")
 def root():
     return {"message": "social media api"}
+
 
 # Route for reading posts
 """
@@ -52,12 +68,15 @@ def root():
     :return: a dictionary with a key "data" and the value being the result of the SQL query, which is a
     list of posts.
 """
+
+
 @app.get("/posts")
 def get_posts():
     cursor.execute("SELECT * from posts")
     posts = cursor.fetchall()
     print(posts)
     return {"data": posts}
+
 
 # Route for creating posts
 """
@@ -69,12 +88,16 @@ def get_posts():
     :type payload: Post
     :return: a dictionary with the key 'data' and the value being the newly created post.
 """
-@app.post("/posts", status_code=status.HTTP_201_CREATED) # Default Status Code
+
+
+@app.post("/posts", status_code=status.HTTP_201_CREATED)  # Default Status Code
 def createPosts(payload: Post):
-    cursor.execute("""INSERT INTO posts (title, content, published, rating) VALUES (%s, %s, %s, %s) RETURNING * """, (payload.title, payload.content, payload.published, payload.rating))
+    cursor.execute("""INSERT INTO posts (title, content, published, rating) VALUES (%s, %s, %s, %s) RETURNING * """,
+                   (payload.title, payload.content, payload.published, payload.rating))
     new_post = cursor.fetchone()
     conn.commit()
     return {'data': new_post}
+
 
 # Route for reading the latest post
 """
@@ -85,11 +108,14 @@ def createPosts(payload: Post):
     table and orders them by the "id" column in descending order. The "fetchone()" method is then used
     to retrieve the first row of the result set, which represents the latest post. The JSON
 """
+
+
 @app.get("/posts/latest")
 def get_latest_post():
-    cursor.execute("""SELECT * FROM posts ORDER BY id DESC""")
+    cursor.execute("""SELECT * from posts ORDER BY id DESC""")
     latest_post = cursor.fetchone()
     return {'data': latest_post}
+
 
 # Route for reading a single post
 """
@@ -107,14 +133,18 @@ def get_latest_post():
     status code of 404 (Not Found) and a detail message indicating that the post with the specified ID
     was not found.
 """
+
+
 @app.get("/posts/{id}")
 def get_post(id: int, response: Response):
-    cursor.execute("""SELECT * from posts where id = %s""",(str(id)))
+    cursor.execute("""SELECT * from posts where id = %s""", (str(id)))
     fetched_post = cursor.fetchone()
     if fetched_post:
-        return {"data":fetched_post}
+        return {"data": fetched_post}
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with {id} not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Post with {id} not found")
+
 
 # Route for deleting a post
 """
@@ -125,13 +155,18 @@ def get_post(id: int, response: Response):
     needs to be deleted
     :type id: int
     """
+
+
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
-    cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *""",(str(id)))
+    cursor.execute(
+        """DELETE from posts WHERE id = %s RETURNING *""", (str(id)))
     conn.commit()
     deleted_post = cursor.fetchone()
     if deleted_post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not found in database")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"ID:{id} not found in database")
+
 
 # Route for updating posts
 """
@@ -147,11 +182,15 @@ def delete_post(id: int):
     :type payload: Post
     :return: a dictionary with the key 'data' and the value being the updated post.
 """
-@app.put("/posts/{id}",status_code=status.HTTP_201_CREATED)
+
+
+@app.put("/posts/{id}", status_code=status.HTTP_201_CREATED)
 def update_post(id: int, payload: Post):
-    cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",(payload.title,payload.content,payload.published,str(id)))
+    cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
+                   (payload.title, payload.content, payload.published, str(id)))
     updated_post = cursor.fetchone()
     conn.commit()
     if updated_post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ID:{id} not found in database")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"ID:{id} not found in database")
     return {'data': updated_post}
