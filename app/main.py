@@ -23,7 +23,7 @@ class Post(BaseModel):
     # If the argument is not passed it will default to True.
     published: bool = True
     rating: Optional[int] = None  # Optional field, sets to none if not
-    type: str = "Response"
+    # type: str = "Response"
 
 
 app = FastAPI()
@@ -48,7 +48,9 @@ while True:
 
 @app.get('/sqlalchemy')
 def test_posts(db: Session = Depends(get_db)):
-    return {"status": "success"}
+    response = db.query(models.Post).all()
+    print(type(response[0]))
+    return {"data": response}
 
 
 """
@@ -71,9 +73,10 @@ def root():
 
 
 @app.get("/posts")
-def get_posts():
-    cursor.execute("SELECT * from posts")
-    posts = cursor.fetchall()
+def get_posts(db: Session = Depends(get_db)):
+    # cursor.execute("SELECT * from posts")
+    # posts = cursor.fetchall()
+    posts = db.query(models.Post).all()
     print(posts)
     return {"data": posts}
 
@@ -91,11 +94,24 @@ def get_posts():
 
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)  # Default Status Code
-def createPosts(payload: Post):
-    cursor.execute("""INSERT INTO posts (title, content, published, rating) VALUES (%s, %s, %s, %s) RETURNING * """,
-                   (payload.title, payload.content, payload.published, payload.rating))
-    new_post = cursor.fetchone()
-    conn.commit()
+def createPosts(payload: Post, db: Session = Depends(get_db)):
+    # cursor.execute("""INSERT INTO posts (title, content, published, rating) VALUES (%s, %s, %s, %s) RETURNING * """,
+    #                (payload.title, payload.content, payload.published, payload.rating))
+    # new_post = cursor.fetchone()
+    # conn.commit()
+
+    # Unpacking a dictionary, passing the values and Post class constructor is taking those values mapping to keys.
+    new_post = models.Post(**payload.model_dump())
+
+    #! deprecated, used in previous version, now using dictionary unpacking.
+    # new_post = models.Post(title=payload.title, content=payload.content,
+    #    published=payload.published, rating=payload.rating)
+
+    db.add(new_post)
+    db.commit()
+
+    # Fetch the new post that was created, and assign it to th new_post object
+    db.refresh(new_post)
     return {'data': new_post}
 
 
@@ -136,9 +152,10 @@ def get_latest_post():
 
 
 @app.get("/posts/{id}")
-def get_post(id: int, response: Response):
-    cursor.execute("""SELECT * from posts where id = %s""", (str(id)))
-    fetched_post = cursor.fetchone()
+def get_post(id: int, db: Session = Depends(get_db)):
+    # cursor.execute("""SELECT * from posts where id = %s""", (str(id)))
+    fetched_post = db.query(models.Post).filter(models.Post.id == id).first()
+
     if fetched_post:
         return {"data": fetched_post}
     else:
@@ -158,14 +175,19 @@ def get_post(id: int, response: Response):
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id: int):
-    cursor.execute(
-        """DELETE from posts WHERE id = %s RETURNING *""", (str(id)))
-    conn.commit()
-    deleted_post = cursor.fetchone()
-    if deleted_post == None:
+def delete_post(id: int, db: Session = Depends(get_db)):
+    # cursor.execute(
+    #     """DELETE from posts WHERE id = %s RETURNING *""", (str(id)))
+    # conn.commit()
+    # deleted_post = cursor.fetchone()
+
+    delete_post = db.query(models.Post).filter(models.Post.id == id)
+
+    if delete_post.first() == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"ID:{id} not found in database")
+    delete_post.delete(synchronize_session=False)
+    db.commit()
 
 
 # Route for updating posts
@@ -185,12 +207,20 @@ def delete_post(id: int):
 
 
 @app.put("/posts/{id}", status_code=status.HTTP_201_CREATED)
-def update_post(id: int, payload: Post):
-    cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
-                   (payload.title, payload.content, payload.published, str(id)))
-    updated_post = cursor.fetchone()
-    conn.commit()
-    if updated_post == None:
+def update_post(id: int, payload: Post, db: Session = Depends(get_db)):
+    # cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
+    #                (payload.title, payload.content, payload.published, str(id)))
+    # updated_post = cursor.fetchone()
+    # conn.commit()
+    update_post_query = db.query(models.Post).filter(models.Post.id == id)
+    post = update_post_query.first()
+
+    if post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"ID:{id} not found in database")
-    return {'data': updated_post}
+
+    update_post_query.update(payload.model_dump(), synchronize_session=False)
+    db.commit()
+
+    db.refresh(post)
+    return {'data': post}
