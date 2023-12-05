@@ -8,7 +8,7 @@ from sqlalchemy import text
 from . import models, schema
 from .database import engine, get_db
 from sqlalchemy.orm import Session
-
+from typing import List
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -27,11 +27,11 @@ app = FastAPI()
     """
 
 
-@app.get("/posts")
+@app.get("/posts", response_model=List[schema.PostResponse])
 def get_posts(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
     print(posts)
-    return {"data": posts}
+    return posts
 
 
 # Route for creating posts
