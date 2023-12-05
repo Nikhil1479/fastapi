@@ -51,7 +51,8 @@ def get_posts(db: Session = Depends(get_db)):
     """
 
 
-@app.post("/posts", status_code=status.HTTP_201_CREATED)  # Default Status Code
+# Default Status Code
+@app.post("/posts", status_code=status.HTTP_201_CREATED, response_model=schema.PostResponse)
 def createPosts(payload: schema.PostCreate, db: Session = Depends(get_db)):
 
     # Unpacking a dictionary, passing the values and Post class constructor is taking those values mapping to keys.
@@ -66,7 +67,7 @@ def createPosts(payload: schema.PostCreate, db: Session = Depends(get_db)):
 
     # Fetch the new post that was created, and assign it to th new_post object
     db.refresh(new_post)
-    return {'data': new_post}
+    return new_post
 
 
 # Route for reading the latest post
@@ -82,10 +83,10 @@ def createPosts(payload: schema.PostCreate, db: Session = Depends(get_db)):
     """
 
 
-@app.get("/posts/latest")
+@app.get("/posts/latest", response_model=schema.PostResponse)
 def get_latest_post(db: Session = Depends(get_db)):
     latest_post = db.query(models.Post).order_by(text('id desc')).first()
-    return {'data': latest_post}
+    return latest_post
 
 
 # Route for reading a single post
@@ -106,13 +107,13 @@ def get_latest_post(db: Session = Depends(get_db)):
     """
 
 
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model=schema.PostResponse)
 def get_post(id: int, db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * from posts where id = %s""", (str(id)))
     fetched_post = db.query(models.Post).filter(models.Post.id == id).first()
 
     if fetched_post:
-        return {"data": fetched_post}
+        return fetched_post
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Post with {id} not found")
@@ -164,7 +165,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
 """
 
 
-@app.put("/posts/{id}", status_code=status.HTTP_201_CREATED)
+@app.put("/posts/{id}", status_code=status.HTTP_201_CREATED, response_model=schema.PostResponse)
 def update_post(id: int, payload: schema.PostCreate, db: Session = Depends(get_db)):
     # cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
     #                (payload.title, payload.content, payload.published, str(id)))
@@ -181,4 +182,4 @@ def update_post(id: int, payload: schema.PostCreate, db: Session = Depends(get_d
     db.commit()
 
     db.refresh(post)
-    return {'data': post}
+    return post
