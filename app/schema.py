@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-
+from datetime import datetime
 
 '''
  The below class represents a post with a title and content.
@@ -19,3 +19,11 @@ class PostBase(BaseModel):
 
 class PostCreate(PostBase):
     pass
+
+
+class PostResponse(PostBase):
+    id: int
+    created_At: datetime
+
+    class Config:
+        orm_mode = True
