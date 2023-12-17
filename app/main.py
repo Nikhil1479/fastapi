@@ -9,6 +9,7 @@ from . import models, schema
 from .database import engine, get_db
 from sqlalchemy.orm import Session
 from typing import List
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -130,7 +131,7 @@ def get_post(id: int, db: Session = Depends(get_db)):
     obtained using the `Depends` function and the `get_db` dependency. The `Session` object represents a
     database session and provides methods for querying, inserting, updating, and deleting data
     :type db: Session
-    """
+"""
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -183,3 +184,44 @@ def update_post(id: int, payload: schema.PostCreate, db: Session = Depends(get_d
 
     db.refresh(post)
     return post
+
+
+"""
+    The below function creates a new user in the database and returns the created user as a response.
+    
+    :param payload: The `payload` parameter is of type `schema.CreateUser` and represents the data sent
+    in the request body. It is used to create a new user in the database
+    :type payload: schema.CreateUser
+    :param db: The `db` parameter is of type `Session` and is used to interact with the database. It is
+    injected into the function using the `Depends` dependency injection from the `fastapi` framework
+    :type db: Session
+    :return: a newly created user object.
+"""
+
+
+@app.post('/users', status_code=status.HTTP_201_CREATED, response_model=schema.UserResponse)
+def createUser(payload: schema.CreateUser, db: Session = Depends(get_db)):
+    new_user = models.Users(**payload.model_dump())
+
+    db.add(new_user)
+    db.commit()
+
+    db.refresh(new_user)
+    return new_user
+
+
+"""
+    The function `getUsers` retrieves all users from the database and returns them as a list of
+    `UserResponse` objects.
+    
+    :param db: The parameter `db` is of type `Session` and is used to access the database session. It is
+    injected into the function using the `Depends` dependency injection
+    :type db: Session
+    :return: a list of UserResponse objects.
+"""
+
+
+@app.get('/users', status_code=status.HTTP_200_OK, response_model=List[schema.UserResponse])
+def getUsers(db: Session = Depends(get_db)):
+    users = db.query(models.Users).all()
+    return users
